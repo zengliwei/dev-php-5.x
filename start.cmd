@@ -11,6 +11,10 @@ for /f "tokens=1,2 delims==" %%i in ( .env ) do (
     set projectName=%%j
   ) else if %%i == DOMAIN (
     set domain=%%j
+  ) else if %%i == DB_USER (
+    set dbUser=%%j
+  ) else if %%i == DB_PSWD (
+    set dbPass=%%j
   )
 )
 
@@ -105,6 +109,23 @@ goto :EOF
   :: Create containers
   ::
   docker-compose up --no-recreate -d
+
+  ::::
+  :: Modify config file of phpMyAdmin
+  ::
+  set phpMyAdminSet=0
+  for /f "tokens=1,2 delims==> " %%i in ( 'findstr /c:"%projectName%_mysql" ..\..\config\phpmyadmin\config.user.inc.php' ) do (
+    if "%%j" == "'%projectName%_mysql'," set phpMyAdminSet=1
+  )
+  if %phpMyAdminSet% == 0 (
+    echo.>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo $cfg['Servers'][] = [>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'auth_type' =^> 'config',>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'host'      =^> '%projectName%_mysql',>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'user'      =^> '%dbUser%',>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'password'  =^> '%dbPass%'>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo ];>> ..\..\config\phpmyadmin\config.user.inc.php
+  )
 
   ::::
   :: Import data
