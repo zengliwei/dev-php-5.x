@@ -1,20 +1,42 @@
-FROM php:5.6-fpm
+FROM debian:stretch-slim
+
+ADD php/php-5.3.*.tar.gz /usr/local/src/
 
 #
 # Install PHP
 #
 RUN apt-get update \
-    && apt-get -y install \
-        libmcrypt-dev \
-        libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
+    && apt-get install -y --no-install-recommends \
+        gcc g++ make curl \
+        libcurl4-openssl-dev \
+        libjpeg62-turbo-dev libpng-dev libxpm-dev libfreetype6-dev \
         libicu-dev \
+        libssl-dev \
+        libxml2-dev \
         libxslt-dev \
         libzip-dev \
-    && docker-php-ext-install -j$(nproc) bcmath iconv intl mbstring mcrypt opcache pdo_mysql soap xml xsl zip \
-    && docker-php-ext-configure gd --with-freetype-dir --with-jpeg-dir \
-    && docker-php-ext-install -j$(nproc) gd \
-    && pecl install xdebug-2.5.0 \
-    && docker-php-ext-enable xdebug
+    && cd /usr/local/src/php-5.3.29 \
+    && ./configure \
+        --build=x86_64-linux-gnu \
+        --with-config-file-path=/usr/local/etc/php \
+        --with-config-file-scan-dir=/usr/local/etc/php/conf.d \
+        --enable-bcmath \
+        --with-curl \
+        --enable-fpm --with-fpm-user=www-data --with-fpm-group=www-data --disable-cgi \
+        --with-jpeg-dir --with-png-dir --with-zlib-dir --with-freetype-dir --enable-gd-native-ttf --with-gd \
+        --enable-intl \
+        --enable-mbstring \
+        --with-openssl \
+        --with-pdo-mysql \
+        --enable-soap \
+        --with-xsl \
+        --with-libzip --enable-zip \
+        build_alias=x86_64-linux-gnu \
+     && make \
+     && find -type f -name '*.a' -delete \
+     && make install \
+     && find /usr/local/bin /usr/local/sbin -type f -executable -exec strip --strip-all '{}' + || true \
+     && make clean
 
 #
 # Install MSMTP for sending email
@@ -60,6 +82,6 @@ COPY --chown=www-data:www-data nginx/nginx.conf /var/www/current/
 #
 COPY docker-bootstrap /usr/local/bin/
 WORKDIR /var/www
-EXPOSE 22 80
+EXPOSE 22 80 9000
 
 CMD ["docker-bootstrap"]
