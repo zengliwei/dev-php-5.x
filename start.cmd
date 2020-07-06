@@ -11,6 +11,10 @@ for /f "tokens=1,2 delims==" %%i in ( .env ) do (
     set projectName=%%j
   ) else if %%i == DOMAIN (
     set domain=%%j
+  ) else if %%i == DB_USER (
+    set dbUser=%%j
+  ) else if %%i == DB_PSWD (
+    set dbPass=%%j
   )
 )
 
@@ -107,20 +111,37 @@ goto :EOF
   docker-compose up --no-recreate -d
 
   ::::
+  :: Modify config file of phpMyAdmin
+  ::
+  set phpMyAdminSet=0
+  for /f "tokens=1,2 delims==> " %%i in ( 'findstr /c:"%projectName%_mysql" ..\..\config\phpmyadmin\config.user.inc.php' ) do (
+    if "%%j" == "'%projectName%_mysql'," set phpMyAdminSet=1
+  )
+  if %phpMyAdminSet% == 0 (
+    echo.>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo $cfg['Servers'][] = [>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'auth_type' =^> 'config',>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'host'      =^> '%projectName%_mysql',>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'user'      =^> '%dbUser%',>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo     'password'  =^> '%dbPass%'>> ..\..\config\phpmyadmin\config.user.inc.php
+    echo ];>> ..\..\config\phpmyadmin\config.user.inc.php
+  )
+
+  ::::
   :: Import data
   ::
   for /f %%f in ( 'dir /b src' ) do (
     set "file=%%f"
     setLocal enableDelayedExpansion
     if !file:~-4! == .tar (
-      call :COPY_FILE_TO_CONTAINER ".\src" !file! %projectName%_web "/var/www/current"
-      docker exec %projectName%_web chown www-data:www-data /var/www/current/!file!
-      docker exec -u www-data:www-data %projectName%_web tar -xvf /var/www/current/!file! -C /var/www/current
+      call :COPY_FILE_TO_CONTAINER ".\src" !file! %projectName%_web "/var/www/html"
+      docker exec %projectName%_web chown www-data:www-data /var/www/html/!file!
+      docker exec -u www-data:www-data %projectName%_web tar -xvf /var/www/html/!file! -C /var/www/html
 
     ) else if !file:~-7! == .tar.gz (
-      call :COPY_FILE_TO_CONTAINER ".\src" !file! %projectName%_web "/var/www/current"
-      docker exec %projectName%_web chown www-data:www-data /var/www/current/!file!
-      docker exec -u www-data:www-data %projectName%_web tar -zxvf /var/www/current/!file! -C /var/www/current
+      call :COPY_FILE_TO_CONTAINER ".\src" !file! %projectName%_web "/var/www/html"
+      docker exec %projectName%_web chown www-data:www-data /var/www/html/!file!
+      docker exec -u www-data:www-data %projectName%_web tar -zxvf /var/www/html/!file! -C /var/www/html
     )
     endLocal
   )
