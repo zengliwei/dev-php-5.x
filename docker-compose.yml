@@ -32,6 +32,7 @@ services:
       - network
     volumes:
       - ./config/php/php.ini:/usr/local/etc/php/php.ini
+      - ./config/apache/apache2.conf:/etc/apache2/apache2.conf
 
 networks:
 
