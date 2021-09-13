@@ -15,7 +15,6 @@ services:
       - network
     volumes:
       - ./config/mysql/mysql.cnf:/etc/mysql/mysql.cnf
-      - ./db:/docker-entrypoint-initdb.d/
 
   web:
     image: dev-php-5.3-web
